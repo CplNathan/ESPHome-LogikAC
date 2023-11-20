@@ -53,7 +53,7 @@ namespace esphome
             // Swing On  0b01001000 (0x48)
             // Swing On  0b00100100 (0x24)
             // (bool)(deviceData[5] & 0b00000010) || (bool)(deviceData[5] & 0b00100000);
-            auto swingOff = deviceData[5] == 0x12;
+            auto swingOff = deviceData[5] == 0x0;
             this->swing_mode = swingOff ? climate::ClimateSwingMode::CLIMATE_SWING_OFF : climate::ClimateSwingMode::CLIMATE_SWING_VERTICAL;
 
             switch (deviceData[3])
@@ -62,12 +62,12 @@ namespace esphome
                 this->mode = climate::ClimateMode::CLIMATE_MODE_OFF;
                 break;
 
-            case 0x4:
+            case 0x10:
                 this->fan_mode = climate::ClimateFanMode::CLIMATE_FAN_LOW;
                 this->mode = climate::ClimateMode::CLIMATE_MODE_FAN_ONLY;
                 break;
 
-            case 0x1:
+            case 0x4:
                 this->fan_mode = climate::ClimateFanMode::CLIMATE_FAN_HIGH;
                 this->mode = climate::ClimateMode::CLIMATE_MODE_FAN_ONLY;
                 break;

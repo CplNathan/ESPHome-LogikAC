@@ -53,7 +53,7 @@ uart:
     number: D5
     inverted: false
   rx_buffer_size: 64
-  data_bits: 8 # 6
+  data_bits: 6 # 6
   parity: NONE
   stop_bits: 1 # 1
   baud_rate: 2000 # 2000
