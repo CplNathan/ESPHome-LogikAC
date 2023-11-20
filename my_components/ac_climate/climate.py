@@ -7,7 +7,7 @@ from esphome.const import CONF_ID, CONF_PIN
 DEPENDENCIES = ["uart"]
 
 ac_switch_ns = cg.esphome_ns.namespace('ac_climate')
-AC = ac_switch_ns.class_('AC', climate.Climate, uart.UARTDevice, cg.Component)
+AC = ac_switch_ns.class_('AC', climate.Climate, uart.UARTDevice, cg.PollingComponent)
 
 CONFIG_SCHEMA = (climate.CLIMATE_SCHEMA
 .extend(
@@ -16,7 +16,7 @@ CONFIG_SCHEMA = (climate.CLIMATE_SCHEMA
         cv.Required(CONF_PIN): pins.gpio_output_pin_schema
     }
     )
-    .extend(cv.COMPONENT_SCHEMA)
+    .extend(cv.polling_component_schema('10s'))
     .extend(uart.UART_DEVICE_SCHEMA)
 )
 

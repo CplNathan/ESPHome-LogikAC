@@ -13,10 +13,11 @@ namespace esphome
 {
   namespace ac_climate
   {
-    class AC : public climate::Climate, public uart::UARTDevice, public Component
+    class AC : public climate::Climate, public uart::UARTDevice, public PollingComponent
     {
     public:
       void setup() override;
+      void update() override;
       void set_pin(GPIOPin *ir_pin) { ir_pin_ = ir_pin; }
       void dump_config() override;
 
@@ -27,6 +28,7 @@ namespace esphome
       GPIOPin *ir_pin_;
       std::vector<uint8_t> read_state();
       void update_state();
+      void execute_updates(const std::vector<uint32_t>& commands);
     };
 
     struct IRMessages

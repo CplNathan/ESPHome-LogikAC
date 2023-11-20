@@ -9,10 +9,6 @@ namespace esphome
         static IRMessages *irmessages;
         static const char *TAG = "ac_climate.climate";
 
-        void a(bool b)
-        {
-        }
-
         std::vector<uint8_t> AC::read_state()
         {
             int baud = this->parent_->get_baud_rate();
@@ -50,9 +46,15 @@ namespace esphome
 
         void AC::update_state()
         {
-            delay(10);
-
             std::vector<uint8_t> deviceData = read_state();
+
+            // Swing Off 0b00010010 (0x12),
+            // Swing Off 0b10101000
+            // Swing On  0b01001000 (0x48)
+            // Swing On  0b00100100 (0x24)
+            // (bool)(deviceData[5] & 0b00000010) || (bool)(deviceData[5] & 0b00100000);
+            auto swingOff = deviceData[5] == 0x12;
+            this->swing_mode = swingOff ? climate::ClimateSwingMode::CLIMATE_SWING_OFF : climate::ClimateSwingMode::CLIMATE_SWING_VERTICAL;
 
             switch (deviceData[3])
             {
@@ -74,6 +76,15 @@ namespace esphome
             this->publish_state();
         }
 
+        void AC::execute_updates(const std::vector<uint32_t> &commands)
+        {
+            for (auto iter = commands.begin(); iter < commands.end(); iter++)
+            {
+                irsend->sendNEC(*iter);
+                delay(1);
+            }
+        }
+
         void AC::setup()
         {
             irsend = new IRsend(((InternalGPIOPin *)this->ir_pin_)->get_pin());
@@ -81,6 +92,11 @@ namespace esphome
 
             irmessages = new IRMessages(irsend);
 
+            this->update_state();
+        }
+
+        void AC::update()
+        {
             this->update_state();
         }
 
@@ -95,8 +111,6 @@ namespace esphome
 
         void AC::control(const climate::ClimateCall &call)
         {
-            this->update_state();
-
             bool togglePower = false;
 
             auto callMode = call.get_mode();
@@ -112,17 +126,19 @@ namespace esphome
             // Only two modes for this so always a toggle if changed.
             bool toggleFan = currentFan != callFan;
 
+            std::vector<uint32_t> commands;
+
             if (togglePower)
             {
-                irsend->sendNEC(irmessages->togglePower);
-                delay(10);
+                commands.push_back(irmessages->togglePower);
             }
 
             if (toggleFan)
             {
-                irsend->sendNEC(irmessages->toggleFanSpeed);
-                delay(10);
+                commands.push_back(irmessages->toggleFanSpeed);
             }
+
+            this->execute_updates(commands);
 
             this->update_state();
         }
