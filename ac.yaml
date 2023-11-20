@@ -39,18 +39,23 @@ switch:
     pin: D2
     uart_id: uart_display
 
+climate:
+  - platform: ac_climate
+    name: Air Conditioner
+    id: ac_climate_device
+    pin: D2
+    uart_id: uart_display
+
+# So the rate and bit count probably is wrong, but from this at the least I can tell what state the unit is in.. or maybe its the endianness? Either way.
 uart:
   tx_pin: 0
-  rx_pin: D5
-  data_bits: 8
-  parity: EVEN
-  stop_bits: 1
-  baud_rate: 4000
+  rx_pin:
+    number: D5
+    inverted: false
+  rx_buffer_size: 64
+  data_bits: 8 # 6
+  parity: NONE
+  stop_bits: 1 # 1
+  baud_rate: 2000 # 2000
   id: uart_display
   debug:
-    direction: BOTH
-    dummy_receiver: false
-    after:
-      bytes: 128
-    sequence:
-      - lambda: UARTDebug::log_string(direction, bytes);
