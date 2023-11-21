@@ -9,7 +9,7 @@ namespace esphome
         static IRMessages *irmessages;
         static const char *TAG = "ac_climate.climate";
 
-        IRMessages* AC::get_messages()
+        IRMessages *AC::get_messages()
         {
             return irmessages;
         }
@@ -68,13 +68,13 @@ namespace esphome
                 break;
 
             case 0x10:
-                this->fan_mode = climate::ClimateFanMode::CLIMATE_FAN_LOW;
-                this->mode = climate::ClimateMode::CLIMATE_MODE_FAN_ONLY;
+                this->set_fan_mode_(climate::ClimateFanMode::CLIMATE_FAN_LOW);
+                this->mode = climate::ClimateMode::CLIMATE_MODE_AUTO;
                 break;
 
             case 0x4:
-                this->fan_mode = climate::ClimateFanMode::CLIMATE_FAN_HIGH;
-                this->mode = climate::ClimateMode::CLIMATE_MODE_FAN_ONLY;
+                this->set_fan_mode_(climate::ClimateFanMode::CLIMATE_FAN_HIGH);
+                this->mode = climate::ClimateMode::CLIMATE_MODE_AUTO;
                 break;
             }
 
@@ -136,6 +136,11 @@ namespace esphome
             // Only two modes for this so always a toggle if changed.
             bool toggleFan = currentFan != callFan;
 
+            auto callSwing = call.get_swing_mode();
+            auto currentSwing = this->swing_mode;
+
+            bool toggleSwing = currentSwing != callSwing;
+
             std::vector<uint32_t> commands;
 
             if (togglePower)
@@ -146,6 +151,11 @@ namespace esphome
             if (toggleFan)
             {
                 commands.push_back(irmessages->toggleFanSpeed);
+            }
+
+            if (toggleSwing)
+            {
+                commands.push_back(irmessages->toggleSwing);
             }
 
             this->execute_updates(commands);
