@@ -9,6 +9,11 @@ namespace esphome
         static IRMessages *irmessages;
         static const char *TAG = "ac_climate.climate";
 
+        IRMessages* AC::get_messages()
+        {
+            return irmessages;
+        }
+
         std::vector<uint8_t> AC::read_state()
         {
             int baud = this->parent_->get_baud_rate();
@@ -76,11 +81,16 @@ namespace esphome
             this->publish_state();
         }
 
+        void AC::execute_update(uint32_t command)
+        {
+            irsend->sendNEC(command);
+        }
+
         void AC::execute_updates(const std::vector<uint32_t> &commands)
         {
             for (auto iter = commands.begin(); iter < commands.end(); iter++)
             {
-                irsend->sendNEC(*iter);
+                this->execute_update(*iter);
                 delay(1);
             }
         }
@@ -146,9 +156,8 @@ namespace esphome
         climate::ClimateTraits AC::traits()
         {
             climate::ClimateTraits traits;
-            traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_COOL);
-            traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_DRY);
-            traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_FAN_ONLY);
+            traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_AUTO);
+            traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_OFF);
             traits.set_supports_current_temperature(false);
             traits.set_supports_two_point_target_temperature(false);
             traits.add_supported_fan_mode(climate::ClimateFanMode::CLIMATE_FAN_HIGH);
@@ -161,7 +170,7 @@ namespace esphome
 
         void AC::dump_config()
         {
-            ESP_LOGCONFIG(TAG, "Empty custom switch");
+            ESP_LOGCONFIG(TAG, "AC climate dump");
         }
 
     } // namespace ac_climate

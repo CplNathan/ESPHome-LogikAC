@@ -23,8 +23,8 @@ wifi:
     ssid: "Acunit Fallback Hotspot"
     password: !secret wifi_password
 
-  on_disconnect:
-    - switch.turn_off: ac_on_off
+  #on_disconnect:
+  #  - climate.off: ac_mode
 
 external_components:
   # use all components from a local folder
@@ -32,12 +32,11 @@ external_components:
       type: local
       path: my_components
 
-switch:
-  - platform: ac_switch
-    name: AC Switch
-    id: ac_on_off
-    pin: D2
-    uart_id: uart_display
+button:
+  - platform: ac_mode
+    name: AC Mode
+    id: ac_mode_device
+    entity_id: ac_climate_device
 
 climate:
   - platform: ac_climate
