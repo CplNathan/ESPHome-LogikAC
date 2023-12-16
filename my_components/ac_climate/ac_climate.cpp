@@ -27,22 +27,32 @@ namespace esphome
 
             std::vector<uint8_t> data = {1, 1, 1, 1, 1, 1, 1, 1};
 
-            while (data[0] != 0x0 && data[1] != 0x12)
-            {
-                while (!(this->available() > 2))
-                {
-                }
-                data[0] = this->read();
-                data[1] = this->peek();
-            }
-
-            for (int i = 2; i < 8; i++)
+            for (int i = 0; i < 8; i++)
             {
                 while (!this->available())
                 {
                 }
                 data[i] = this->read();
             }
+
+            /*
+                        while (data[0] != 0x0 && data[1] != 0x12)
+                        {
+                            while (!(this->available() >= 2))
+                            {
+                            }
+                            data[0] = this->read();
+                            data[1] = this->peek();
+                        }
+
+                        for (int i = 2; i < 8; i++)
+                        {
+                            while (!this->available())
+                            {
+                            }
+                            data[i] = this->read();
+                        }
+            */
 
             uart::UARTDebug::log_binary(uart::UARTDirection::UART_DIRECTION_RX, data, ',');
 
@@ -53,32 +63,22 @@ namespace esphome
         {
             std::vector<uint8_t> deviceData = read_state();
 
-            // Swing Off 0b00010010 (0x12),
-            // Swing Off 0b10101000
-            // Swing On  0b01001000 (0x48)
-            // Swing On  0b00100100 (0x24)
-            // (bool)(deviceData[5] & 0b00000010) || (bool)(deviceData[5] & 0b00100000);
-            auto swingOff = deviceData[5] == 0x0;
-            this->swing_mode = swingOff ? climate::ClimateSwingMode::CLIMATE_SWING_OFF : climate::ClimateSwingMode::CLIMATE_SWING_VERTICAL;
+            bool isOff = deviceData[3] == 0x15 && deviceData[4] == 0x15;
 
-            switch (deviceData[3])
+            if (isOff)
             {
-            case 0x0:
+                this->fan_mode = climate::ClimateFanMode::CLIMATE_FAN_OFF;
                 this->mode = climate::ClimateMode::CLIMATE_MODE_OFF;
-                break;
-
-            case 0x10:
-                this->set_fan_mode_(climate::ClimateFanMode::CLIMATE_FAN_LOW);
-                this->mode = climate::ClimateMode::CLIMATE_MODE_AUTO;
-                break;
-
-            case 0x4:
-                this->set_fan_mode_(climate::ClimateFanMode::CLIMATE_FAN_HIGH);
-                this->mode = climate::ClimateMode::CLIMATE_MODE_AUTO;
-                break;
             }
+            else
+            {
+                bool isLow = (deviceData[3] == 0x15 && (deviceData[4] == 0x14 || deviceData[4] == 0x04));
+                bool isSwing = deviceData[7] == 0x11;
 
-            this->publish_state();
+                this->mode = climate::ClimateMode::CLIMATE_MODE_FAN_ONLY;
+                this->fan_mode = isLow ? climate::ClimateFanMode::CLIMATE_FAN_LOW : climate::ClimateFanMode::CLIMATE_FAN_HIGH;
+                this->swing_mode = isSwing ? climate::ClimateSwingMode::CLIMATE_SWING_VERTICAL : climate::ClimateSwingMode::CLIMATE_SWING_OFF;
+            }
         }
 
         void AC::execute_update(uint32_t command)
@@ -91,7 +91,7 @@ namespace esphome
             for (auto iter = commands.begin(); iter < commands.end(); iter++)
             {
                 this->execute_update(*iter);
-                delay(1);
+                delay(5);
             }
         }
 
@@ -108,38 +108,25 @@ namespace esphome
         void AC::update()
         {
             this->update_state();
+            this->publish_state();
         }
-
-        // todo, string, fan speed etc
-        // todo need to find out ir code for sweep, fan speed, ac mode, temp..?
-
-        // Something less than 0x9 was temp up/down
-        // 0x9 = mode select
-
-        // Probably don't use the display lights as this requires for the screen to be awake for commands to work...
-        // 0xB = display lights toggle (I think? if not just check again tomorrow, its somewhere around here.)
 
         void AC::control(const climate::ClimateCall &call)
         {
-            bool togglePower = false;
-
+            auto currentModeValue = this->mode;
             auto callMode = call.get_mode();
-            auto currentMode = this->mode;
-            if (currentMode != callMode)
-            {
-                togglePower = callMode == 0 || (callMode > 0 && currentMode == 0);
-            }
+            auto callModeValue = *callMode;
+            bool togglePower = callMode.has_value() && currentModeValue != callModeValue ? (callModeValue == 0 || (callModeValue > 0 && currentModeValue == 0)) : false;
 
-            auto callFan = call.get_fan_mode();
             auto currentFan = this->fan_mode;
+            auto callFan = call.get_fan_mode();
+            auto callFanValue = *callFan;
+            bool toggleFan = callFan.has_value() && currentFan != callFanValue;
 
-            // Only two modes for this so always a toggle if changed.
-            bool toggleFan = currentFan != callFan;
-
-            auto callSwing = call.get_swing_mode();
             auto currentSwing = this->swing_mode;
-
-            bool toggleSwing = currentSwing != callSwing;
+            auto callSwing = call.get_swing_mode();
+            auto callSwingValue = *callSwing;
+            bool toggleSwing = callSwing.has_value() && currentSwing != callSwing;
 
             std::vector<uint32_t> commands;
 
@@ -161,12 +148,13 @@ namespace esphome
             this->execute_updates(commands);
 
             this->update_state();
+            this->publish_state();
         }
 
         climate::ClimateTraits AC::traits()
         {
             climate::ClimateTraits traits;
-            traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_AUTO);
+            traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_FAN_ONLY);
             traits.add_supported_mode(climate::ClimateMode::CLIMATE_MODE_OFF);
             traits.set_supports_current_temperature(false);
             traits.set_supports_two_point_target_temperature(false);
