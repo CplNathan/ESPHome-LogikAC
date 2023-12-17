@@ -7,10 +7,6 @@ namespace esphome
     {
         static const char *TAG = "ac_mode.button";
 
-        void a(bool b)
-        {
-        }
-
         void ACButton::setup()
         {
         }
